@@ -1,0 +1,528 @@
+#include "MainWindow.h"
+#include "MaterialDockWidget.h"
+#include "WidgetManager.h"
+#include "ROS2Interface.h"
+#include "DigitalTwin.h"
+#include "BaseWidget.h"
+#include "Logger.h"
+#include "SidebarWidget.h"
+
+#include <QMenuBar>
+#include <QToolBar>
+#include <QStatusBar>
+#include <QDockWidget>
+#include <QMessageBox>
+#include <QCloseEvent>
+#include <QLabel>
+#include <QToolButton>
+#include <QHBoxLayout>
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , m_widgetManager(nullptr)
+    , m_ros2Interface(nullptr)
+    , m_digitalTwin(nullptr)
+    , m_ros2Connected(false)
+{
+    setupUI();
+}
+
+MainWindow::~MainWindow()
+{
+    Logger::instance().info("Main window destroyed");
+}
+
+void MainWindow::setupUI()
+{
+    setWindowTitle("Precision Farming Robot - Desktop Client");
+    setMinimumSize(1280, 720);
+    resize(1600, 900);
+
+    // Enable docking
+    setDockNestingEnabled(true);
+    setCorner(Qt::TopLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::TopRightCorner, Qt::RightDockWidgetArea);
+    setCorner(Qt::BottomLeftCorner, Qt::LeftDockWidgetArea);
+    setCorner(Qt::BottomRightCorner, Qt::RightDockWidgetArea);
+
+    createMenus();
+    createToolBar();
+    createStatusBar();
+
+    // Set central widget as empty - we'll use dock widgets
+    QWidget* centralWidget = new QWidget(this);
+    centralWidget->setObjectName("mainCentralWidget");
+    setCentralWidget(centralWidget);
+
+    // 2px gap between docks
+    setContentsMargins(2, 2, 2, 2);
+}
+
+void MainWindow::createMenus()
+{
+    // File menu
+    QMenu* fileMenu = menuBar()->addMenu(tr("&File"));
+    QAction* exitAction = fileMenu->addAction(tr("&Exit"));
+    exitAction->setShortcut(QKeySequence::Quit);
+    connect(exitAction, &QAction::triggered, this, &QWidget::close);
+
+    // Widgets menu
+    QMenu* widgetsMenu = menuBar()->addMenu(tr("&Widgets"));
+    widgetsMenu->addAction(tr("Add &Video Stream"), this, &MainWindow::onAddVideoStream);
+    widgetsMenu->addAction(tr("Add &Controls"), this, &MainWindow::onAddSidebar);
+    // legacy entries kept for compatibility but hidden from default UI
+    // widgetsMenu->addAction(tr("Add &Command Control"), this, &MainWindow::onAddCommandControl);
+    // widgetsMenu->addAction(tr("Add &Motion Control"), this, &MainWindow::onAddMotionControl);
+    widgetsMenu->addAction(tr("Add &Sensor Data"), this, &MainWindow::onAddSensorData);
+    widgetsMenu->addAction(tr("Add &Detection Panel"), this, &MainWindow::onAddDetectionPanel);
+    widgetsMenu->addAction(tr("Add Current &Detection"), this, &MainWindow::onAddCurrentDetection);
+    widgetsMenu->addAction(tr("Add Detection &Summary"), this, &MainWindow::onAddDetectionSummary);
+    widgetsMenu->addAction(tr("Add C&oordinates"), this, &MainWindow::onAddCoordinates);
+    widgetsMenu->addAction(tr("Add &Digital Twin"), this, &MainWindow::onAddTwinVisualization);
+    widgetsMenu->addAction(tr("Add &Robot 3D Model"), this, &MainWindow::onAddRobotModel);
+    widgetsMenu->addSeparator();
+    widgetsMenu->addAction(tr("Add &Laser Calibration"), this, &MainWindow::onAddLaserCalibration);
+    widgetsMenu->addAction(tr("Add &IMU 3D View"), this, &MainWindow::onAddIMU3D);
+    widgetsMenu->addSeparator();
+    widgetsMenu->addAction(tr("&Remove Widget"), this, &MainWindow::onRemoveWidget);
+
+    // ROS2 menu
+    QMenu* ros2Menu = menuBar()->addMenu(tr("&ROS2"));
+    m_connectAction = ros2Menu->addAction(tr("&Connect"), this, &MainWindow::onToggleROS2Connection);
+    m_connectAction->setCheckable(true);
+
+    // Help menu
+    QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
+    helpMenu->addAction(tr("&About"), this, &MainWindow::onAbout);
+
+    // right corner: connect button + ROS2 status badge
+    QWidget *badgeContainer = new QWidget(this);
+    QHBoxLayout *badgeLayout = new QHBoxLayout(badgeContainer);
+    badgeLayout->setContentsMargins(0, 0, 10, 0);
+    badgeLayout->setSpacing(10);
+
+    m_connectBtn = new QToolButton(this);
+    m_connectBtn->setObjectName("connectButton");
+    m_connectBtn->setText(tr("Connect"));
+    m_connectBtn->setCheckable(true);
+    m_connectBtn->setToolTip(tr("Connect / disconnect ROS2"));
+    connect(m_connectBtn, &QToolButton::clicked, this, &MainWindow::onToggleROS2Connection);
+    badgeLayout->addWidget(m_connectBtn);
+
+    m_ros2Badge = new StatusBadge(tr("ROS2 Offline"), this);
+    badgeLayout->addWidget(m_ros2Badge);
+    badgeContainer->setObjectName("appBarBadgeContainer");
+    menuBar()->setCornerWidget(badgeContainer, Qt::TopRightCorner);
+
+    // WeedX brand label in left corner — M3 app bar branding
+    QLabel* brandLabel = new QLabel(this);
+    brandLabel->setObjectName("appBarBrandLabel");
+    brandLabel->setText("WeedX  <span style='font-weight:400;color:#7A9B79;'>Precision Farming</span>");
+    brandLabel->setTextFormat(Qt::RichText);
+    menuBar()->setCornerWidget(brandLabel, Qt::TopLeftCorner);
+}
+
+void MainWindow::createToolBar()
+{
+    // Connect button moved to navbar — toolbar not needed
+    QToolBar* toolbar = addToolBar(tr("Main Toolbar"));
+    toolbar->setMovable(false);
+    toolbar->hide();
+}
+
+void MainWindow::createStatusBar()
+{
+    statusBar()->showMessage(tr("Ready"));
+}
+
+void MainWindow::setWidgetManager(WidgetManager* manager)
+{
+    m_widgetManager = manager;
+}
+
+void MainWindow::setROS2Interface(ROS2Interface* ros2)
+{
+    m_ros2Interface = ros2;
+    
+    if (m_ros2Interface) {
+        connect(m_ros2Interface, &ROS2Interface::connected, this, &MainWindow::onROS2Connected);
+        connect(m_ros2Interface, &ROS2Interface::disconnected, this, &MainWindow::onROS2Disconnected);
+    }
+}
+
+void MainWindow::setDigitalTwin(DigitalTwin* twin)
+{
+    m_digitalTwin = twin;
+    
+    // Create or restore layout after all dependencies are set
+    if (m_widgetManager && m_ros2Interface && m_digitalTwin) {
+        // always create the standard set of docks first so restoreState can act on them
+        createDefaultLayout();
+
+        if (!m_layoutRestored) {
+            if (restoreLayout()) {
+                Logger::instance().info("Layout restored from previous session");
+            } else {
+                Logger::instance().info("No saved layout found; using default");
+            }
+            m_layoutRestored = true;
+        }
+    }
+}
+
+void MainWindow::createDefaultLayout()
+{
+    Logger::instance().info("Creating default widget layout");
+    
+    // Build the three-zone layout using the existing dock system.
+    // The order of addition determines splitting behaviour.
+    onAddVideoStream();      // left main video area
+    // coordinates dock is no longer part of default layout – position will be shown inline in sidebar
+    // onAddCoordinates();      // left, split beside video
+    // onAddTwinVisualization(); // Disabled: Digital Twin widget hidden
+    onAddSidebar();          // right sidebar unified control panel
+    onAddSensorData();       // bottom telemetry bar
+    onAddDetectionPanel();   // right column — merged detection details + cumulative metrics
+
+    // Enforce proportions: video should be ~3× wider than sidebar
+    if (m_dockWidgets.contains("Video Stream") && m_dockWidgets.contains("Controls")) {
+        QList<QDockWidget*> docks;
+        docks << m_dockWidgets["Video Stream"] << m_dockWidgets["Controls"];
+        QList<int> sizes;
+        sizes << 3 << 1; // relative weights
+        resizeDocks(docks, sizes, Qt::Horizontal);
+    }
+
+    // Give Controls ~2/3 of the right column, Sensor Data the remaining ~1/3
+    if (m_dockWidgets.contains("Controls") && m_dockWidgets.contains("Sensor Data")) {
+        QList<QDockWidget*> rightDocks;
+        rightDocks << m_dockWidgets["Controls"] << m_dockWidgets["Sensor Data"];
+        QList<int> sizes;
+        sizes << 2 << 1;
+        resizeDocks(rightDocks, sizes, Qt::Vertical);
+    }
+
+    Logger::instance().info("Default layout created");
+}
+
+void MainWindow::addWidgetToDock(BaseWidget* widget, const QString& title)
+{
+    if (!widget) return;
+
+    MaterialDockWidget* dock = new MaterialDockWidget(title, this);
+    dock->setWidget(widget);
+    dock->setObjectName(widget->widgetId());
+
+    // Make dockable, movable, and closable
+    dock->setFeatures(QDockWidget::DockWidgetMovable |
+                      QDockWidget::DockWidgetClosable |
+                      QDockWidget::DockWidgetFloatable);
+
+    // Determine dock area based on widget type
+    Qt::DockWidgetArea area = Qt::RightDockWidgetArea;
+    MaterialDockWidget* splitWith = nullptr;
+    
+    // Smart placement based on widget type
+    if (title.contains("Video", Qt::CaseInsensitive)) {
+        area = Qt::LeftDockWidgetArea;
+    } else if (title.contains("Coordinates", Qt::CaseInsensitive)) {
+        area = Qt::LeftDockWidgetArea;
+        // Find video widget to split with
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.key().contains("video", Qt::CaseInsensitive)) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    } else if (title.contains("Twin", Qt::CaseInsensitive)) {
+        area = Qt::LeftDockWidgetArea;
+        // Find video widget to split with
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.key().contains("video", Qt::CaseInsensitive)) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    } else if (title.contains("Motion", Qt::CaseInsensitive)) {
+        area = Qt::RightDockWidgetArea;
+    } else if (title.contains("Command", Qt::CaseInsensitive)) {
+        area = Qt::RightDockWidgetArea;
+        // Find motion widget to split with
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.key().contains("_", Qt::CaseInsensitive) && dockWidgetArea(it.value()) == Qt::RightDockWidgetArea) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    } else if (title.contains("Sensor", Qt::CaseInsensitive)) {
+        area = Qt::RightDockWidgetArea;
+        // Place below the Controls sidebar
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.key().contains("Controls", Qt::CaseInsensitive)) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    } else if (title.contains("Current Detection", Qt::CaseInsensitive)) {
+        area = Qt::RightDockWidgetArea;
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.value() && it.value()->windowTitle().contains("Sensor Data", Qt::CaseInsensitive)) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    } else if (title.contains("Detection Summary", Qt::CaseInsensitive)) {
+        area = Qt::RightDockWidgetArea;
+        for (auto it = m_dockWidgets.begin(); it != m_dockWidgets.end(); ++it) {
+            if (it.value() && it.value()->windowTitle().contains("Current Detection", Qt::CaseInsensitive)) {
+                splitWith = it.value();
+                break;
+            }
+        }
+    }
+    
+    addDockWidget(area, dock);
+    
+    // Split with existing widget if found
+    if (splitWith) {
+        splitDockWidget(splitWith, dock, Qt::Vertical);
+    }
+    
+    m_dockWidgets[widget->widgetId()] = dock;
+
+    // Connect widget to data sources
+    widget->setROS2Interface(m_ros2Interface);
+    widget->setDigitalTwin(m_digitalTwin);
+    widget->initialize();
+
+    // if this is a sidebar control panel, make sure motion gating reflects
+    // current connection state (in case ROS2 was already connected)
+    if (m_ros2Connected) {
+        if (auto sb = qobject_cast<SidebarWidget*>(widget)) {
+            sb->setMotionEnabled(true);
+        }
+    }
+
+    Logger::instance().info(QString("Added widget to dock: %1 in area %2").arg(title).arg(area));
+}
+
+
+void MainWindow::onAddCommandControl()
+{
+    Logger::instance().info("CommandControl widget deprecated; using unified sidebar instead");
+    onAddSidebar();
+}
+
+void MainWindow::onAddSidebar()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::Sidebar, this);
+    addWidgetToDock(widget, "Controls");
+}
+
+void MainWindow::onAddMotionControl()
+{
+    Logger::instance().info("MotionControl widget deprecated; using unified sidebar instead");
+    onAddSidebar();
+}
+
+void MainWindow::onAddVideoStream()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::VideoStream, this);
+    addWidgetToDock(widget, "Video Stream");
+}
+
+void MainWindow::onAddSensorData()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::SensorData, this);
+    addWidgetToDock(widget, "Sensor Data");
+}
+
+void MainWindow::onAddCoordinates()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::Coordinates, this);
+    addWidgetToDock(widget, "Coordinates");
+}
+
+void MainWindow::onAddCurrentDetection()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::CurrentDetection, this);
+    addWidgetToDock(widget, "Current Detection");
+}
+
+void MainWindow::onAddDetectionSummary()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::DetectionSummary, this);
+    addWidgetToDock(widget, "Detection Summary");
+}
+
+void MainWindow::onAddDetectionPanel()
+{
+    if (!m_widgetManager) return;
+
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::DetectionPanel, this);
+    addWidgetToDock(widget, "Detection");
+}
+
+void MainWindow::onAddTwinVisualization()
+{
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::TwinVisualization, this);
+    addWidgetToDock(widget, "Digital Twin");
+}
+
+void MainWindow::onAddRobotModel()
+{
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::RobotModel3D, this);
+    addWidgetToDock(widget, "Robot 3D Model");
+}
+
+void MainWindow::onAddLaserCalibration()
+{
+    if (!m_widgetManager) return;
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::LaserCalibration, this);
+    addWidgetToDock(widget, "Laser Calibration");
+}
+
+void MainWindow::onAddIMU3D()
+{
+    if (!m_widgetManager) return;
+    auto widget = m_widgetManager->createWidget(WidgetManager::WidgetType::IMU3D, this);
+    addWidgetToDock(widget, "IMU 3D View");
+}
+
+void MainWindow::onRemoveWidget()
+{
+    // Implementation for removing widgetsDigital 
+    statusBar()->showMessage(tr("Right-click on widget title to close"), 2000);
+}
+
+void MainWindow::onToggleROS2Connection()
+{
+    if (!m_ros2Interface) {
+        QMessageBox::warning(this, tr("Error"), tr("ROS2 interface not initialized"));
+        if (m_connectBtn) m_connectBtn->setChecked(false);
+        return;
+    }
+
+    if (!m_ros2Connected) {
+        m_ros2Interface->start();
+        statusBar()->showMessage(tr("Connecting to ROS2..."), 2000);
+    } else {
+        m_ros2Interface->stop();
+        statusBar()->showMessage(tr("Disconnecting from ROS2..."), 2000);
+    }
+}
+
+// -----------------------------------------------------------------------------
+// layout persistence helpers
+// -----------------------------------------------------------------------------
+
+bool MainWindow::restoreLayout()
+{
+    QSettings settings;
+    // Version key: bump this when the dock structure changes to force a layout reset
+    const int layoutVersion = 3;
+    if (settings.value("layoutVersion").toInt() != layoutVersion) {
+        settings.remove("windowGeometry");
+        settings.remove("windowState");
+        settings.setValue("layoutVersion", layoutVersion);
+        return false;
+    }
+    if (settings.contains("windowGeometry") && settings.contains("windowState")) {
+        restoreGeometry(settings.value("windowGeometry").toByteArray());
+        restoreState(settings.value("windowState").toByteArray());
+
+        // Qt creates plain QDockWidget placeholders for any dock widget names in
+        // the saved state that don't exist in the current layout (e.g. a widget
+        // the user added manually in a previous session). Those placeholders are
+        // not MaterialDockWidget instances, so they lack our event() override and
+        // crash on mouse events via a null drag-state access in QDockWidget::event().
+        // Remove them immediately after restoring.
+        for (QDockWidget* dw : findChildren<QDockWidget*>()) {
+            if (!qobject_cast<MaterialDockWidget*>(dw)) {
+                removeDockWidget(dw);
+                dw->deleteLater();
+            }
+        }
+
+        return true;
+    }
+    return false;
+}
+
+void MainWindow::saveLayout()
+{
+    QSettings settings;
+    settings.setValue("windowGeometry", saveGeometry());
+    settings.setValue("windowState", saveState());
+}
+
+
+// -----------------------------------------------------------------------------
+// status badge slot implementations
+// -----------------------------------------------------------------------------
+
+void MainWindow::onROS2Connected()
+{
+    Logger::instance().info("MainWindow: ROS2 connected, updating badge");
+    statusBar()->showMessage(tr("ROS2 Connected"), 3000);
+    m_ros2Connected = true;
+    m_connectAction->setChecked(true);
+    if (m_connectBtn) {
+        m_connectBtn->setChecked(true);
+        m_connectBtn->setText(tr("Disconnect"));
+    }
+    if (m_ros2Badge) {
+        m_ros2Badge->setText(tr("ROS2 Connected"));
+        m_ros2Badge->setDotColor(QColor("#22C55E"));
+    }
+}
+
+void MainWindow::onROS2Disconnected()
+{
+    Logger::instance().info("MainWindow: ROS2 disconnected, updating badge");
+    statusBar()->showMessage(tr("ROS2 Disconnected"), 3000);
+    m_ros2Connected = false;
+    m_connectAction->setChecked(false);
+    if (m_connectBtn) {
+        m_connectBtn->setChecked(false);
+        m_connectBtn->setText(tr("Connect"));
+    }
+    if (m_ros2Badge) {
+        m_ros2Badge->setText(tr("ROS2 Offline"));
+        m_ros2Badge->setDotColor(QColor("#9CA3AF"));
+    }
+}
+
+void MainWindow::onAbout()
+{
+    QMessageBox::about(this, tr("About"),
+        tr("<h2>Precision Farming Robot</h2>"
+           "<p>Desktop Client v1.0.0</p>"
+           "<p>A modular Qt-based interface for robot control and monitoring.</p>"
+           "<p>Features:</p>"
+           "<ul>"
+           "<li>ROS2 Integration</li>"
+           "<li>Digital Twin Simulation</li>"
+           "<li>Modular Widget System</li>"
+           "<li>Real-time Sensor Data Visualization</li>"
+           "</ul>"));
+}
+
+void MainWindow::closeEvent(QCloseEvent *event)
+{
+    Logger::instance().info("Main window closing");
+    saveLayout();
+    event->accept();
+}

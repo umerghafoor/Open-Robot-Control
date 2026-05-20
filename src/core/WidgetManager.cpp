@@ -1,0 +1,177 @@
+#include "WidgetManager.h"
+#include "BaseWidget.h"
+#include "VideoStreamWidget.h"
+#include "MotionControlWidget.h"
+#include "CommandControlWidget.h"
+#include "SidebarWidget.h"
+#include "SensorDataWidget.h"
+#include "CoordinatesWidget.h"
+#include "CurrentDetectionWidget.h"
+#include "DetectionSummaryWidget.h"
+#include "DetectionPanelWidget.h"
+#include "TwinVisualizationWidget.h"
+#include "RobotModelWidget.h"
+#include "LaserCalibrationWidget.h"
+#include "IMU3DWidget.h"
+#include "Logger.h"
+
+WidgetManager::WidgetManager(QObject *parent)
+    : QObject(parent)
+    , m_widgetCounter(0)
+{
+    // Register default widget types
+    registerWidget(WidgetType::VideoStream, "Video Stream");
+    // unified sidebar replaces the two old control widgets
+    registerWidget(WidgetType::Sidebar, "Controls");
+    // still keep the old types around but do not register them here
+    // registerWidget(WidgetType::MotionControl, "Motion Control");
+    // registerWidget(WidgetType::CommandControl, "Command & Control");
+    registerWidget(WidgetType::SensorData, "Sensor Data");
+    registerWidget(WidgetType::CurrentDetection, "Current Detection");
+    registerWidget(WidgetType::DetectionSummary, "Detection Summary");
+    registerWidget(WidgetType::DetectionPanel, "Detection Panel");
+    registerWidget(WidgetType::Coordinates, "Coordinates");
+    registerWidget(WidgetType::TwinVisualization, "Digital Twin");
+    registerWidget(WidgetType::RobotModel3D, "Robot 3D Model");
+    registerWidget(WidgetType::LaserCalibration, "Laser Calibration");
+    registerWidget(WidgetType::IMU3D, "IMU 3D View");
+}
+
+WidgetManager::~WidgetManager()
+{
+    // Clean up active widgets
+    for (auto widget : m_activeWidgets) {
+        if (widget) {
+            widget->deleteLater();
+        }
+    }
+    m_activeWidgets.clear();
+}
+
+void WidgetManager::registerWidget(WidgetType type, const QString& name)
+{
+    m_registeredWidgets[type] = name;
+    Logger::instance().debug(QString("Registered widget type: %1").arg(name));
+}
+
+BaseWidget* WidgetManager::createWidget(WidgetType type, QWidget* parent)
+{
+    BaseWidget* widget = nullptr;
+
+    switch (type) {
+        case WidgetType::VideoStream:
+            widget = new VideoStreamWidget(parent);
+            break;
+        case WidgetType::Sidebar:
+            widget = new SidebarWidget(parent);
+            break;
+        case WidgetType::MotionControl:
+            // legacy; redirect to unified sidebar
+            widget = new SidebarWidget(parent);
+            break;
+        case WidgetType::CommandControl:
+            // legacy; redirect to unified sidebar
+            widget = new SidebarWidget(parent);
+            break;
+        case WidgetType::SensorData:
+            widget = new SensorDataWidget(parent);
+            break;
+        case WidgetType::CurrentDetection:
+            widget = new CurrentDetectionWidget(parent);
+            break;
+        case WidgetType::DetectionSummary:
+            widget = new DetectionSummaryWidget(parent);
+            break;
+        case WidgetType::DetectionPanel:
+            widget = new DetectionPanelWidget(parent);
+            break;
+        case WidgetType::Coordinates:
+            widget = new CoordinatesWidget(parent);
+            break;
+        case WidgetType::TwinVisualization:
+            widget = new TwinVisualizationWidget(parent);
+            break;
+        case WidgetType::RobotModel3D:
+            widget = new RobotModelWidget(parent);
+            break;
+        case WidgetType::LaserCalibration:
+            widget = new LaserCalibrationWidget(parent);
+            break;
+        case WidgetType::IMU3D:
+            widget = new IMU3DWidget(parent);
+            break;
+        case WidgetType::Custom:
+            Logger::instance().warning("Custom widget type not implemented");
+            break;
+    }
+
+    if (widget) {
+        QString widgetId = generateWidgetId(type);
+        widget->setWidgetId(widgetId);
+        addActiveWidget(widgetId, widget);
+        
+        emit widgetCreated(widget);
+        Logger::instance().info(QString("Created widget: %1 (ID: %2)")
+                                .arg(widgetName(type))
+                                .arg(widgetId));
+    }
+
+    return widget;
+}
+
+QList<WidgetManager::WidgetType> WidgetManager::registeredTypes() const
+{
+    return m_registeredWidgets.keys();
+}
+
+QString WidgetManager::widgetName(WidgetType type) const
+{
+    return m_registeredWidgets.value(type, "Unknown");
+}
+
+void WidgetManager::addActiveWidget(const QString& id, BaseWidget* widget)
+{
+    m_activeWidgets[id] = widget;
+}
+
+void WidgetManager::removeActiveWidget(const QString& id)
+{
+    if (m_activeWidgets.contains(id)) {
+        m_activeWidgets.remove(id);
+        emit widgetRemoved(id);
+        Logger::instance().info(QString("Removed widget: %1").arg(id));
+    }
+}
+
+BaseWidget* WidgetManager::getWidget(const QString& id) const
+{
+    return m_activeWidgets.value(id, nullptr);
+}
+
+QList<BaseWidget*> WidgetManager::activeWidgets() const
+{
+    return m_activeWidgets.values();
+}
+
+QString WidgetManager::generateWidgetId(WidgetType type)
+{
+    QString typeName;
+    switch (type) {
+        case WidgetType::VideoStream: typeName = "video"; break;
+        case WidgetType::Sidebar: typeName = "controls"; break;
+        case WidgetType::CommandControl: typeName = "control"; break;
+        case WidgetType::MotionControl: typeName = "motion"; break;
+        case WidgetType::SensorData: typeName = "sensor"; break;
+        case WidgetType::CurrentDetection: typeName = "current_detection"; break;
+        case WidgetType::DetectionSummary: typeName = "detection_summary"; break;
+        case WidgetType::DetectionPanel:   typeName = "detection_panel";   break;
+        case WidgetType::Coordinates: typeName = "coordinates"; break;
+        case WidgetType::TwinVisualization: typeName = "twin"; break;
+        case WidgetType::RobotModel3D:       typeName = "model3d"; break;
+        case WidgetType::LaserCalibration:   typeName = "laser_cal"; break;
+        case WidgetType::IMU3D:              typeName = "imu3d"; break;
+        case WidgetType::Custom:             typeName = "custom"; break;
+    }
+    
+    return QString("%1_%2").arg(typeName).arg(++m_widgetCounter);
+}
