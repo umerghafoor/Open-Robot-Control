@@ -2,21 +2,85 @@
 #include <QStyle>
 #include <QTimer>
 #include <QEvent>
+#include <QMouseEvent>
+#include <QApplication>
+#include <QCursor>
+#include <QWindow>
 
-// Title bar subclass that ignores all mouse events so they propagate up to the
-// parent QDockWidget, which is required for Qt's built-in drag state machine to
-// initialize correctly (QTBUG-43698). Without this, a plain QWidget accepts the
-// mouse press, QDockWidget never sees it, the drag state is never created, and
-// subsequent move events crash inside QDockWidget::event() via a null-state access.
+// Title bar that owns drag detection itself instead of relying on event
+// propagation into QDockWidget's internal drag state machine. The previous
+// approach (ignore() on mouse events + propagate to QDockWidget) was brittle:
+// QDockWidget's d->state path is designed for the native title bar, not for
+// custom title bar widgets, and crashed at drop time when layout reshuffling
+// re-entered the dock's mouse handling with a stale/null state.
+//
+// We instead detect the drag from the panel itself: on a left press over the
+// empty title bar area (buttons absorb their own presses, so they never reach
+// here), arm a drag; once the cursor moves past startDragDistance, set the
+// dock floating. From there, the user is dragging a top-level window and Qt
+// handles redocking via the normal QMainWindow drop overlay.
 class DockTitleBar final : public QWidget
 {
 public:
-    explicit DockTitleBar(QWidget* parent = nullptr) : QWidget(parent) {}
+    explicit DockTitleBar(MaterialDockWidget* dock) : QWidget(dock), m_dock(dock) {}
+
 protected:
-    void mousePressEvent(QMouseEvent* e) override       { e->ignore(); }
-    void mouseMoveEvent(QMouseEvent* e) override        { e->ignore(); }
-    void mouseReleaseEvent(QMouseEvent* e) override     { e->ignore(); }
-    void mouseDoubleClickEvent(QMouseEvent* e) override { e->ignore(); }
+    void mousePressEvent(QMouseEvent* e) override
+    {
+        if (e->button() == Qt::LeftButton && m_dock && (m_dock->features() & QDockWidget::DockWidgetMovable)) {
+            m_pressPos = e->globalPosition().toPoint();
+            m_armed    = true;
+            e->accept();
+            return;
+        }
+        e->ignore();
+    }
+
+    void mouseMoveEvent(QMouseEvent* e) override
+    {
+        if (!m_armed || !m_dock) { e->ignore(); return; }
+
+        const QPoint delta = e->globalPosition().toPoint() - m_pressPos;
+        if (delta.manhattanLength() < QApplication::startDragDistance()) {
+            e->accept();
+            return;
+        }
+
+        // Once past threshold, undock (if needed) and hand off to the window
+        // manager via startSystemMove(). After that the WM owns the drag —
+        // our mouse events stop firing, which is exactly what we want.
+        if (!m_dock->isFloating()) {
+            m_dock->setFloating(true);
+            const QPoint cursor = e->globalPosition().toPoint();
+            m_dock->move(cursor - QPoint(m_dock->width() / 4, height() / 2));
+        }
+
+        m_armed = false;
+        if (QWindow* w = m_dock->windowHandle())
+            w->startSystemMove();
+        e->accept();
+    }
+
+    void mouseReleaseEvent(QMouseEvent* e) override
+    {
+        m_armed = false;
+        e->accept();
+    }
+
+    void mouseDoubleClickEvent(QMouseEvent* e) override
+    {
+        if (e->button() == Qt::LeftButton && m_dock) {
+            m_dock->setFloating(!m_dock->isFloating());
+            e->accept();
+            return;
+        }
+        e->ignore();
+    }
+
+private:
+    MaterialDockWidget* m_dock  = nullptr;
+    QPoint              m_pressPos;
+    bool                m_armed = false;
 };
 
 MaterialDockWidget::MaterialDockWidget(const QString& title, QWidget* parent)
@@ -44,6 +108,7 @@ void MaterialDockWidget::buildTitleBar(const QString& title)
     m_titleBar->setObjectName("dockTitleBar");
     m_titleBar->setMinimumHeight(32);
     m_titleBar->setMaximumHeight(32);
+    m_titleBar->setCursor(Qt::SizeAllCursor);
 
     auto* layout = new QHBoxLayout(m_titleBar);
     layout->setContentsMargins(12, 0, 8, 0);
@@ -130,35 +195,6 @@ void MaterialDockWidget::updateFullscreenButton()
         m_fullscreenButton->setText("\u26F6");  // ⛶ — enter fullscreen
         m_fullscreenButton->setToolTip(tr("Full Screen"));
     }
-}
-
-bool MaterialDockWidget::event(QEvent* event)
-{
-    // QTBUG-43698: QDockWidget::event() crashes on MouseMove when its internal
-    // drag state (d->state) was never created.  The drag state is created only
-    // when QDockWidget itself receives MouseButtonPress.  DockTitleBar ignores
-    // presses on its empty area so they propagate here, but QToolButton children
-    // (Float/Close/Fullscreen buttons) absorb the press before DockTitleBar sees
-    // it, leaving QDockWidget without a press — and any subsequent MouseMove
-    // triggers the null-state crash.
-    //
-    // Guard: only let MouseMove reach QDockWidget::event() when we actually saw
-    // the matching press.  Non-move events always go through normally.
-    switch (event->type()) {
-        case QEvent::MouseButtonPress:
-            m_dockSawPress = true;
-            break;
-        case QEvent::MouseButtonRelease:
-            m_dockSawPress = false;
-            break;
-        case QEvent::MouseMove:
-            if (!m_dockSawPress)
-                return QWidget::event(event);   // skip QDockWidget drag machinery
-            break;
-        default:
-            break;
-    }
-    return QDockWidget::event(event);
 }
 
 void MaterialDockWidget::keyPressEvent(QKeyEvent* event)
