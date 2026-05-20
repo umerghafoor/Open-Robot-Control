@@ -15,7 +15,7 @@ echo -e "${BLUE}=== OpenRobotControl ===${NC}"
 echo ""
 
 # Check if executable exists
-if [ ! -f "build/OpenRobotControl" ]; then
+if [ ! -f "build/open_robot_control" ]; then
     echo -e "${YELLOW}Executable not found. Building...${NC}"
     ./build.sh release
     if [ $? -ne 0 ]; then
@@ -37,7 +37,7 @@ echo "Log file: OpenRobotControl.log"
 echo ""
 
 # Run the application
-./build/OpenRobotControl "$@"
+./build/open_robot_control "$@"
 
 EXIT_CODE=$?
 echo ""

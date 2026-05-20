@@ -10,6 +10,7 @@
 #include <QFile>
 #include <QTextStream>
 #include <QTimer>
+#include <QSettings>
 
 Application::Application(int argc, char** argv, QObject *parent)
     : QObject(parent)
@@ -105,15 +106,8 @@ bool Application::initializeUI()
         appFont.setFamily("Inter,Segoe UI,Ubuntu,sans-serif");
         qApp->setFont(appFont);
 
-        // apply global stylesheet from resources; theme.qss should be added to the .qrc
-        QFile f(":/theme.qss");
-        if (f.open(QFile::ReadOnly | QFile::Text)) {
-            QTextStream ts(&f);
-            qApp->setStyleSheet(ts.readAll());
-            Logger::instance().info("Global theme stylesheet applied");
-        } else {
-            Logger::instance().warning("Unable to open theme.qss resource");
-        }
+        // apply persisted theme (defaults to light if none saved)
+        applyTheme(currentTheme());
 
         // Create widget manager
         m_widgetManager = std::make_unique<WidgetManager>();
@@ -193,4 +187,26 @@ void Application::onROS2Disconnected()
 void Application::onTwinStateChanged()
 {
     Logger::instance().debug("Digital Twin state changed");
+}
+
+QString Application::currentTheme()
+{
+    QSettings s;
+    return s.value("ui/theme", "light").toString();
+}
+
+void Application::applyTheme(const QString& name)
+{
+    const QString resource = (name == "dark") ? ":/theme_dark.qss" : ":/theme.qss";
+    QFile f(resource);
+    if (!f.open(QFile::ReadOnly | QFile::Text)) {
+        Logger::instance().warning(QString("Unable to open theme resource: %1").arg(resource));
+        return;
+    }
+    QTextStream ts(&f);
+    qApp->setStyleSheet(ts.readAll());
+
+    QSettings s;
+    s.setValue("ui/theme", (name == "dark") ? "dark" : "light");
+    Logger::instance().info(QString("Theme applied: %1").arg(name));
 }

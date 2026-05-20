@@ -2,6 +2,7 @@
 #define APPLICATION_H
 
 #include <QObject>
+#include <QString>
 #include <memory>
 
 class MainWindow;
@@ -48,6 +49,17 @@ public:
      * @brief Get Widget Manager
      */
     WidgetManager* widgetManager() const { return m_widgetManager.get(); }
+
+    /**
+     * @brief Apply the named theme stylesheet ("light" or "dark") and persist
+     *        the choice in QSettings so it survives restarts.
+     */
+    static void applyTheme(const QString& name);
+
+    /**
+     * @brief Read the saved theme name from QSettings, defaulting to "light".
+     */
+    static QString currentTheme();
 
 signals:
     void initializationComplete();

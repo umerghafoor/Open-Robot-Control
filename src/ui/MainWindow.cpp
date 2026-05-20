@@ -6,6 +6,7 @@
 #include "BaseWidget.h"
 #include "Logger.h"
 #include "SidebarWidget.h"
+#include "core/Application.h"
 
 #include <QMenuBar>
 #include <QToolBar>
@@ -16,6 +17,7 @@
 #include <QLabel>
 #include <QToolButton>
 #include <QHBoxLayout>
+#include <QActionGroup>
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
@@ -91,6 +93,26 @@ void MainWindow::createMenus()
     m_connectAction = ros2Menu->addAction(tr("&Connect"), this, &MainWindow::onToggleROS2Connection);
     m_connectAction->setCheckable(true);
 
+    // View menu — theme switcher
+    QMenu* viewMenu = menuBar()->addMenu(tr("&View"));
+    QMenu* themeMenu = viewMenu->addMenu(tr("&Theme"));
+    QActionGroup* themeGroup = new QActionGroup(this);
+    themeGroup->setExclusive(true);
+
+    QAction* lightAction = themeMenu->addAction(tr("&Light"));
+    lightAction->setCheckable(true);
+    themeGroup->addAction(lightAction);
+
+    QAction* darkAction = themeMenu->addAction(tr("&Dark"));
+    darkAction->setCheckable(true);
+    themeGroup->addAction(darkAction);
+
+    const QString saved = Application::currentTheme();
+    (saved == "dark" ? darkAction : lightAction)->setChecked(true);
+
+    connect(lightAction, &QAction::triggered, this, []() { Application::applyTheme("light"); });
+    connect(darkAction,  &QAction::triggered, this, []() { Application::applyTheme("dark"); });
+
     // Help menu
     QMenu* helpMenu = menuBar()->addMenu(tr("&Help"));
     helpMenu->addAction(tr("&About"), this, &MainWindow::onAbout);
@@ -117,7 +139,7 @@ void MainWindow::createMenus()
     // Brand label in left corner — M3 app bar branding
     QLabel* brandLabel = new QLabel(this);
     brandLabel->setObjectName("appBarBrandLabel");
-    brandLabel->setText("OpenRobotControl  <span style='font-weight:400;color:#7A9B79;'>Open Source</span>");
+    brandLabel->setText("OpenRobotControl  <span style='font-weight:400;color:#818CF8;'>Open Source</span>");
     brandLabel->setTextFormat(Qt::RichText);
     menuBar()->setCornerWidget(brandLabel, Qt::TopLeftCorner);
 }

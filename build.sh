@@ -75,7 +75,7 @@ make -j$(nproc)
 # Check if build was successful
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}=== Build completed successfully! ===${NC}"
-    echo -e "Executable: ${YELLOW}$(pwd)/OpenRobotControl${NC}"
+    echo -e "Executable: ${YELLOW}$(pwd)/open_robot_control${NC}"
 
     # Copy sample 3D model assets next to the executable so the app can find them.
     # Users can replace these with their own robot models (named robot.obj/.mtl/.png).
@@ -88,7 +88,7 @@ if [ $? -eq 0 ]; then
 
     echo ""
     echo "To run the application:"
-    echo -e "  ${YELLOW}./build/OpenRobotControl${NC}"
+    echo -e "  ${YELLOW}./build/open_robot_control${NC}"
 else
     echo -e "${RED}=== Build failed! ===${NC}"
     exit 1
