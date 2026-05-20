@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build Docker image for Precision Farming Desktop Client
+# Build Docker image for OpenRobotControl
 # This script builds the ros2-humble-qt6 image from the Dockerfile
 
 set -e  # Exit on error
@@ -11,7 +11,7 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${GREEN}=== Building Docker Image for Desktop Client ===${NC}"
+echo -e "${GREEN}=== Building Docker Image for OpenRobotControl ===${NC}"
 echo -e "${YELLOW}Image name: ros2-humble-qt6:latest${NC}"
 echo ""
 

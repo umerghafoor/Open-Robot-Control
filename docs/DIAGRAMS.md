@@ -4,7 +4,7 @@
 
 ```
 ┌────────────────────────────────────────────────────────────────────┐
-│                  Precision Farming Desktop Client                   │
+│                          OpenRobotControl                           │
 │                         (Qt6 Application)                           │
 ├────────────────────────────────────────────────────────────────────┤
 │                                                                     │
@@ -182,8 +182,8 @@ Thread Safety Mechanisms:
          ▼
 ┌────────────────────┐
 │   Executable       │
-│ PrecisionFarming   │
-│ DesktopClient      │
+│ OpenRobotControl   │
+│                    │
 └────────┬───────────┘
          │
          ▼

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Start Docker container for Precision Farming Desktop Client
+# Start Docker container for OpenRobotControl
 # This script runs the ros2-humble-qt6 container with GUI support
 
 set -e  # Exit on error
@@ -76,7 +76,7 @@ DOCKER_ARGS=(
   -v /tmp/.X11-unix:/tmp/.X11-unix
   -v "$HOME/.Xauthority:/root/.Xauthority"
   -v "/dev/dri:/dev/dri"
-  -v "/home/sani/c0d3/Precision-Farming-Robot-2.0/desktop-client:/workspace"
+  -v "${SCRIPT_DIR}:/workspace"
 )
 
 # Try to enable GPU support if nvidia-docker is available
@@ -97,7 +97,7 @@ DOCKER_ARGS+=(
 # Run the Docker container
 echo -e "${GREEN}Starting container...${NC}"
 $DOCKER_CMD run "${DOCKER_ARGS[@]}" \
-  --name precision-farming-client \
+  --name open-robot-control \
   ros2-humble-qt6 \
   bash
 

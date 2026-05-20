@@ -13,5 +13,5 @@ RUN apt-get update && \
       libxkbcommon-dev && \
     rm -rf /var/lib/apt/lists/*
     
-WORKDIR /workspace/desktop-client
+WORKDIR /workspace
 

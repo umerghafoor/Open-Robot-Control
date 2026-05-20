@@ -1,24 +1,35 @@
-# Precision Farming Robot — Desktop Client
+# OpenRobotControl
 
-Qt6 desktop app for robot control, telemetry, and simulation, with optional ROS2 integration.
+A general-purpose, open-source Qt6 desktop interface for robot control, telemetry, and simulation — with optional ROS2 integration.
+
+OpenRobotControl provides a dockable widget workspace, a Digital Twin engine, and a clean message bridge to ROS2 so you can wire up new robots, sensors, and control surfaces without rebuilding UI plumbing every time.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Qt6](https://img.shields.io/badge/Qt-6-41CD52)](https://www.qt.io/)
+[![ROS2 optional](https://img.shields.io/badge/ROS2-optional-22314E)](https://docs.ros.org/)
 
 ## TL;DR
 
-- Stack: C++17 + Qt6 (`Core`, `Gui`, `Widgets`, `Network`), optional Qt Multimedia, optional ROS2.
-- Entry flow: `main.cpp` → `Application` → `ROS2Interface` → `DigitalTwin` → `MainWindow`.
-- UI model: dockable widget workspace managed by `WidgetManager`.
-- ROS2 mode is optional: if ROS2 is not sourced/found, app builds and runs in stub/standalone mode.
+- **Stack:** C++17 + Qt6 (`Core`, `Gui`, `Widgets`, `Network`), optional Qt Multimedia / OpenGL, optional ROS2.
+- **Entry flow:** `main.cpp` → `Application` → `ROS2Interface` → `DigitalTwin` → `MainWindow`.
+- **UI model:** dockable widget workspace managed by `WidgetManager` — rearrange, hide, and persist layouts at runtime.
+- **ROS2 is optional:** if ROS2 is not sourced/found, the app builds and runs in stub/standalone mode.
+
+## Why this project
+
+Most robot UIs are tightly coupled to a specific platform, fleet, or stack. OpenRobotControl is the opposite: a hackable, dock-based shell you can extend for any robot — wheeled, tracked, arm, drone, or simulated — with or without ROS2. Contributions, forks, and platform-specific layouts are welcome.
 
 ## Core Capabilities
 
-- Modular dockable widgets (add/remove/rearrange at runtime).
+- Modular dockable widgets (add/remove/rearrange at runtime, layouts persist).
 - Robot command publishing (`/cmd_vel`, `/robot_command`).
 - Real-time telemetry subscriptions (camera, IMU, status, coordinates).
 - Digital Twin modes:
   - `Synchronized` (mirrors ROS2 updates)
-  - `Simulated` (internal simulation)
-  - `Offline`
-- Structured logging to `PrecisionFarmingClient.log`.
+  - `Simulated` (internal physics simulation)
+  - `Offline` (standalone)
+- Structured logging to `OpenRobotControl.log`.
+- Optional 3D model viewport — drop in your own `robot.obj` to visualize your platform.
 
 ## Widget Set (Current)
 
@@ -29,7 +40,7 @@ Registered by default in `WidgetManager`:
 - `Command & Control`
 - `Sensor Data`
 - `Coordinates`
-- `Digital Twin` (type exists, but UI creation is currently disabled in `MainWindow`)
+- `Digital Twin` (type exists; UI creation is currently disabled in `MainWindow`)
 
 ## ROS2 Contract (Code-Accurate)
 
@@ -48,13 +59,11 @@ Registered by default in `WidgetManager`:
 
 ### Notes
 
-- Image encoding handling: if incoming encoding is `bgr8`, it is converted to RGB before Qt signal emission.
+- Image encoding: incoming `bgr8` frames are converted to RGB before Qt signal emission.
 - ROS2 spinning runs on a dedicated `QThread` with a `QTimer` at 10 ms (`spin_some` loop).
 - Camera topic can be switched dynamically via `ROS2Interface::switchCameraTopic(...)`.
 
 ## Build
-
-From `desktop-client/`:
 
 ```bash
 ./build.sh clean debug
@@ -64,9 +73,9 @@ From `desktop-client/`:
 
 What `build.sh` does:
 
-- Detects ROS2 using `ROS_DISTRO`.
+- Detects ROS2 via `ROS_DISTRO`.
 - Sets `-DUSE_ROS2=OFF` automatically when ROS2 is not sourced.
-- Configures CMake and builds `build/PrecisionFarmingDesktopClient`.
+- Configures CMake and builds `build/OpenRobotControl`.
 
 ### Manual CMake (optional)
 
@@ -104,14 +113,14 @@ make -j"$(nproc)"
 - `src/ui/widgets/*` — per-widget UI and behavior.
 - `src/utils/Logger.*` — centralized logging.
 
-## Extension Checklist
+## Extending OpenRobotControl
 
 ### Add a new widget
 
-1. Create widget class deriving from `BaseWidget`.
-2. Register enum/name and factory case in `WidgetManager`.
+1. Create a widget class deriving from `BaseWidget`.
+2. Register an enum/name and factory case in `WidgetManager`.
 3. Add source/header to `CMakeLists.txt`.
-4. Expose menu/toolbar action in `MainWindow` if needed.
+4. Expose a menu/toolbar action in `MainWindow` if user-visible.
 
 ### Add a ROS2 topic
 
@@ -119,16 +128,38 @@ make -j"$(nproc)"
 2. Bridge data through Qt signals.
 3. Consume in widgets and/or `DigitalTwin`.
 
+### Use your own robot model
+
+Drop a `robot.obj` (optionally with `robot.mtl` and `robot.png`) next to the built executable or in the project root. The 3D model widget picks it up automatically. If no `robot.obj` is found, the bundled `box.obj` sample is shown as a placeholder.
+
 ## Requirements
 
-- Linux (Ubuntu recommended)
+- Linux (Ubuntu recommended; other platforms welcome — contributions invited).
 - CMake >= 3.16
 - C++17 toolchain
 - Qt6 base development packages
-- Optional: ROS2 (for live robot integration)
+- Optional: ROS2 (Humble or newer) for live robot integration
+
+Install build dependencies on Ubuntu:
+
+```bash
+./install_dependency.sh
+```
 
 ## Troubleshooting
 
 - Build without ROS2 intentionally: leave ROS2 unsourced, then run `./build.sh`.
 - If camera appears wrong-color, verify source encoding (`bgr8` vs `rgb8`).
-- Check logs in `PrecisionFarmingClient.log` for startup/init/connectivity issues.
+- Check logs in `OpenRobotControl.log` for startup/init/connectivity issues.
+
+## Contributing
+
+OpenRobotControl is community-driven. Bug reports, feature ideas, widgets for new robots, and docs improvements are all welcome:
+
+1. Fork the repo and create a feature branch.
+2. Keep changes surgical and preserve the dock-based architecture unless proposing a UI redesign.
+3. Open a pull request describing the change and any robot/platform you tested against.
+
+## License
+
+[MIT](LICENSE). Use it, fork it, ship it.

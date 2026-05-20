@@ -1,10 +1,10 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>PrecisionFarmingDesktopClient</name>
+  <name>open_robot_control</name>
   <version>1.0.0</version>
-  <description>Desktop client for Precision Farming Robot with Qt GUI and Digital Twin</description>
-  <maintainer email="your.email@example.com">Your Name</maintainer>
+  <description>OpenRobotControl - a general-purpose, open-source Qt6 desktop interface for robot control, telemetry, and simulation with optional ROS2 integration.</description>
+  <maintainer email="umerghafoor.lab@gmail.com">OpenRobotControl Contributors</maintainer>
   <license>MIT</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>

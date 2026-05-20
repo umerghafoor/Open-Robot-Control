@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Build script for Precision Farming Desktop Client
+# Build script for OpenRobotControl
 # Usage: ./build.sh [clean|debug|release]
 
 set -e  # Exit on error
@@ -38,7 +38,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-echo -e "${GREEN}=== Precision Farming Desktop Client Build Script ===${NC}"
+echo -e "${GREEN}=== OpenRobotControl Build Script ===${NC}"
 echo -e "Build type: ${YELLOW}${BUILD_TYPE}${NC}"
 
 # Check if ROS2 is sourced (optional)
@@ -75,11 +75,12 @@ make -j$(nproc)
 # Check if build was successful
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}=== Build completed successfully! ===${NC}"
-    echo -e "Executable: ${YELLOW}$(pwd)/PrecisionFarmingDesktopClient${NC}"
+    echo -e "Executable: ${YELLOW}$(pwd)/OpenRobotControl${NC}"
 
-    # Copy 3D model assets next to the executable so the app can find them
+    # Copy sample 3D model assets next to the executable so the app can find them.
+    # Users can replace these with their own robot models (named robot.obj/.mtl/.png).
     SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-    for asset in robot.obj robot.mtl robot.png; do
+    for asset in box.obj robot.obj robot.mtl robot.png; do
         if [ -f "${SCRIPT_DIR}/${asset}" ]; then
             cp "${SCRIPT_DIR}/${asset}" "$(pwd)/${asset}"
         fi
@@ -87,7 +88,7 @@ if [ $? -eq 0 ]; then
 
     echo ""
     echo "To run the application:"
-    echo -e "  ${YELLOW}./build/PrecisionFarmingDesktopClient${NC}"
+    echo -e "  ${YELLOW}./build/OpenRobotControl${NC}"
 else
     echo -e "${RED}=== Build failed! ===${NC}"
     exit 1

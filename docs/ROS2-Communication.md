@@ -109,7 +109,7 @@ sudo docker run -it --rm \
   -v /tmp/.X11-unix:/tmp/.X11-unix \
   -v $HOME/.Xauthority:/root/.Xauthority \
   -v "/workspace_path":/workspace \
-  --name precision-farming-client \
+  --name open-robot-control \
   ros2-humble-qt6 \
   bash
 ```

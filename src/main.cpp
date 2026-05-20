@@ -18,7 +18,7 @@
 // notify() is the only interception point that fires for ALL events to ALL
 // objects before any virtual dispatch — so we block mouse events to any dock
 // widget that is not one of our MaterialDockWidget instances here.
-class PrecisionFarmingApp : public QApplication {
+class OpenRobotControlApp : public QApplication {
 public:
     using QApplication::QApplication;
 
@@ -40,25 +40,25 @@ public:
 int main(int argc, char *argv[])
 {
     // Initialize Qt Application
-    PrecisionFarmingApp app(argc, argv);
-    app.setApplicationName("Precision Farming Desktop Client");
+    OpenRobotControlApp app(argc, argv);
+    app.setApplicationName("OpenRobotControl");
     app.setApplicationVersion("1.0.0");
-    app.setOrganizationName("PrecisionFarming");
+    app.setOrganizationName("OpenRobotControl");
 
     // Initialize Logger
-    Logger::instance().initialize("PrecisionFarmingClient.log");
+    Logger::instance().initialize("OpenRobotControl.log");
     Logger::instance().info("Application starting...");
 
     try {
         // Create and run the main application
-        auto farmingApp = std::make_unique<Application>(argc, argv);
-        
-        if (!farmingApp->initialize()) {
+        auto robotApp = std::make_unique<Application>(argc, argv);
+
+        if (!robotApp->initialize()) {
             Logger::instance().error("Failed to initialize application");
             return -1;
         }
 
-        farmingApp->show();
+        robotApp->show();
         Logger::instance().info("Application initialized successfully");
 
         int result = app.exec();

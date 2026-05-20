@@ -17,7 +17,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The scripts detect `ROS_DISTRO` and set `-DUSE_ROS2` automatically. Manual CMake is supported but the scripts encode project defaults.
 
-There is no test suite. Validate by building, launching the app, and checking `PrecisionFarmingClient.log`.
+There is no test suite. Validate by building, launching the app, and checking `OpenRobotControl.log`.
+
+## Project Identity
+
+**OpenRobotControl** — a general-purpose, MIT-licensed, open-source Qt6 desktop interface for robot control, telemetry, and simulation. It is intentionally robot-agnostic: previous farming-specific branding was removed in favor of generic abstractions so the project can serve any robot platform. Do not reintroduce platform-specific (e.g. farming, drone, arm) branding into shared code or docs; keep platform specifics in optional widgets or downstream forks.
 
 ## Architecture
 

@@ -96,8 +96,8 @@ bool Application::initializeUI()
 {
     try {
         // name the application for QSettings
-        QCoreApplication::setOrganizationName("WeedX");
-        QCoreApplication::setApplicationName("PrecisionFarmingClient");
+        QCoreApplication::setOrganizationName("OpenRobotControl");
+        QCoreApplication::setApplicationName("OpenRobotControl");
 
         // set global application font stack before any widgets are created
         QFont appFont;

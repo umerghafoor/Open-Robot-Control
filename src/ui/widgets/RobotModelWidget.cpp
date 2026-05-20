@@ -16,8 +16,9 @@
 
 // ─── Configuration ────────────────────────────────────────────────────────────
 
-// robot.obj has no separate wheel sub-objects; leave empty so no mesh tinting
-// is applied and wheel rotation skips gracefully.
+// Sample meshes ship without separate wheel sub-objects; leave empty so no
+// mesh tinting is applied and wheel rotation skips gracefully. Users supplying
+// their own robot.obj with named wheel sub-objects can populate this list.
 static const QStringList WHEEL_OBJECT_NAMES = {};
 static const QStringList WHEEL_LABELS = { "FL", "FR", "RL" };
 
@@ -52,15 +53,21 @@ static QString colorToCSS(const QVector3D &c)
 
 static QString findModelFile()
 {
-    const QString name = QStringLiteral("robot.obj");
-    const QStringList candidates = {
-        QCoreApplication::applicationDirPath() + "/" + name,
-        QCoreApplication::applicationDirPath() + "/../" + name,
-        QCoreApplication::applicationDirPath() + "/../../" + name,
-        QDir::currentPath() + "/" + name
+    // Search for a user-supplied robot.obj first, then fall back to the
+    // bundled sample mesh (box.obj). Drop your own robot.obj/.mtl/.png
+    // next to the executable or in the project root to replace the sample.
+    const QStringList names = { QStringLiteral("robot.obj"), QStringLiteral("box.obj") };
+    const QStringList dirs = {
+        QCoreApplication::applicationDirPath(),
+        QCoreApplication::applicationDirPath() + "/..",
+        QCoreApplication::applicationDirPath() + "/../..",
+        QDir::currentPath()
     };
-    for (const QString &p : candidates) {
-        if (QFile::exists(p)) return QDir::cleanPath(p);
+    for (const QString &name : names) {
+        for (const QString &d : dirs) {
+            const QString p = d + "/" + name;
+            if (QFile::exists(p)) return QDir::cleanPath(p);
+        }
     }
     return {};
 }
@@ -262,8 +269,8 @@ void RobotModelWidget::startLoading()
 {
     QString path = findModelFile();
     if (path.isEmpty()) {
-        m_loadLabel->setText("Model file not found (robot.obj)");
-        Logger::instance().warning("RobotModelWidget: robot.obj not found");
+        m_loadLabel->setText("No model found. Place robot.obj or box.obj next to the executable.");
+        Logger::instance().warning("RobotModelWidget: no robot.obj/box.obj found");
         m_stack->setCurrentIndex(2);
         return;
     }

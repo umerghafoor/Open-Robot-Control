@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-## Getting Started with Precision Farming Desktop Client
+## Getting Started with OpenRobotControl
 
 ### 1. Prerequisites Check
 
@@ -10,7 +10,7 @@ Before building, ensure you have:
 # Check Qt6 installation
 qmake6 --version
 
-# Check ROS2 installation
+# Check ROS2 installation (optional)
 echo $ROS_DISTRO
 
 # Check C++ compiler
@@ -20,15 +20,13 @@ g++ --version
 If any are missing:
 
 ```bash
-# Install Qt6
+# Install build tools and Qt6 on Ubuntu (or run ./install_dependency.sh)
 sudo apt update
-sudo apt install qt6-base-dev qt6-multimedia-dev qt6-tools-dev
+sudo apt install -y build-essential cmake git \
+                    qt6-base-dev qt6-multimedia-dev qt6-tools-dev
 
-# Install ROS2 (if not installed)
+# Install ROS2 (optional, only for live robot integration)
 # Follow: https://docs.ros.org/en/humble/Installation.html
-
-# Install build tools
-sudo apt install build-essential cmake git
 ```
 
 ### 2. Build the Application
@@ -44,11 +42,14 @@ chmod +x build.sh
 ./build.sh clean debug
 ```
 
+The build script auto-detects ROS2 via `ROS_DISTRO`. If ROS2 is not sourced, the app builds in standalone (stub) mode.
+
 ### 3. Run the Application
 
 ```bash
-# From the desktop-client directory
-./build/PrecisionFarmingDesktopClient
+./run.sh
+# or directly
+./build/OpenRobotControl
 ```
 
 ### 4. First-Time Setup
@@ -59,57 +60,51 @@ When you first launch the application:
    - Menu: `Widgets` → `Add Video Stream`
    - Menu: `Widgets` → `Add Command Control`
    - Menu: `Widgets` → `Add Sensor Data`
-   - Menu: `Widgets` → `Add Digital Twin`
 
 2. **Arrange Your Workspace**
    - Drag widget title bars to reposition
    - Drag widgets outside to make them floating
    - Resize by dragging widget edges
+   - Layouts are persisted automatically across sessions
 
-3. **Connect to Robot (if available)**
+3. **Connect to a Robot (if available)**
    - Menu: `ROS2` → `Connect`
-   - Or click "Connect" in toolbar
+   - Or click "Connect" in the top app bar
 
-4. **Test with Simulation**
+4. **Test with the Built-in Simulation**
    - Menu: `Simulation` → `Start Simulation`
-   - Or click "Start Simulation" in toolbar
 
 ### 5. Common Operations
 
 #### Controlling the Robot
 
-1. Open Command & Control widget
+1. Open Command & Control widget.
 2. Use sliders to set velocity:
-   - **Linear Speed**: -1.0 to 1.0 m/s
-   - **Angular Speed**: -π to π rad/s
-3. Click **STOP** for normal stop
-4. Click **EMERGENCY STOP** for immediate halt
+   - **Linear Speed:** -1.0 to 1.0 m/s
+   - **Angular Speed:** -π to π rad/s
+3. Click **STOP** for a normal stop.
+4. Click **EMERGENCY STOP** for an immediate halt.
 
 #### Viewing Video Streams
 
-1. Open Video Stream widget
-2. Select camera from dropdown
-3. Click "Record" to start recording (if implemented)
+1. Open the Video Stream widget.
+2. Select a camera topic from the dropdown.
 
 #### Monitoring Sensors
 
-1. Open Sensor Data widget
-2. Data updates automatically at 10 Hz
-3. View IMU, GPS, battery, and status
+1. Open the Sensor Data widget — data updates automatically.
 
 #### Digital Twin
 
-1. Open Digital Twin widget
-2. Select mode from dropdown:
-   - **Synchronized**: Mirror real robot
-   - **Simulated**: Run simulation
-   - **Offline**: Disconnected
-3. View real-time state information
+1. Select a mode from the dropdown:
+   - **Synchronized:** mirror real robot state
+   - **Simulated:** internal physics simulation
+   - **Offline:** disconnected
+2. View real-time state information.
 
-### 6. Keyboard Shortcuts
+### 6. Custom Robot Model
 
-- `Ctrl+Q` - Quit application
-- (More shortcuts can be added in MainWindow.cpp)
+The 3D viewport will load any `robot.obj` you drop next to the executable (or in the project root). Optionally include a matching `robot.mtl` and a `robot.png` texture. If no custom model is found, the bundled `box.obj` placeholder is shown.
 
 ### 7. Troubleshooting
 
@@ -117,13 +112,12 @@ When you first launch the application:
 
 **Problem:** "Qt6 not found"
 ```bash
-# Solution: Install Qt6
 sudo apt install qt6-base-dev
 ```
 
 **Problem:** "ROS2 not found"
 ```bash
-# Solution: Source ROS2
+# Solution: Source ROS2, then rebuild
 source /opt/ros/humble/setup.bash
 ./build.sh clean
 ```
@@ -131,72 +125,54 @@ source /opt/ros/humble/setup.bash
 #### Runtime Errors
 
 **Problem:** "ROS2 interface not initialized"
-- Ensure ROS2 is sourced before running
-- Check ROS2 is running: `ros2 topic list`
+- Ensure ROS2 is sourced before running.
+- Check ROS2 is running: `ros2 topic list`.
 
 **Problem:** "No video stream"
-- Check ROS2 topic: `ros2 topic echo /camera/image_raw`
-- Verify camera node is running
+- Check the configured camera topic: `ros2 topic echo camera/raw`.
+- Verify your camera node is publishing.
 
 **Problem:** "Application crashes on start"
-- Check log file: `cat PrecisionFarmingClient.log`
-- Run with debug build: `./build.sh clean debug`
+- Check log file: `cat OpenRobotControl.log`
+- Try a debug build: `./build.sh clean debug`
 
 ### 8. Development Workflow
 
-#### Adding New Features
-
-1. Create new branch
-2. Modify code (see README for architecture)
-3. Build and test: `./build.sh clean debug`
-4. Check logs for errors
-5. Submit pull request
-
-#### Testing Changes
-
 ```bash
-# Debug build for development
+# Debug build during development
 ./build.sh clean debug
 
 # Run with verbose output
-./build/PrecisionFarmingDesktopClient 2>&1 | tee output.log
+./build/OpenRobotControl 2>&1 | tee output.log
 ```
 
-### 9. ROS2 Topics Reference
+### 9. ROS2 Topics Reference (code-accurate)
 
-The application subscribes to:
-- `/camera/image_raw` - Camera feed
-- `/imu/data` - IMU sensor data
-- `/robot_status` - Robot status messages
+Subscribed:
+- `camera/raw` (`sensor_msgs/msg/Image`)
+- `/imu/data` (`sensor_msgs/msg/Imu`)
+- `/robot_status` (`std_msgs/msg/String`)
+- `/coordinates` (`geometry_msgs/msg/PointStamped`)
+- `image/coordinates` (`std_msgs/msg/String`)
 
-The application publishes to:
-- `/cmd_vel` - Velocity commands
-- `/robot_command` - Custom commands
+Published:
+- `/cmd_vel` (`geometry_msgs/msg/Twist`)
+- `/robot_command` (`std_msgs/msg/String`)
 
 ### 10. Next Steps
 
 - Explore the modular widget system
-- Customize widgets for your needs
 - Add custom ROS2 topics
-- Integrate with your robot hardware
-- Build custom visualizations
-
-## Tips & Best Practices
-
-1. **Always source ROS2** before building or running
-2. **Use debug builds** during development
-3. **Check logs** for error messages
-4. **Arrange widgets** efficiently for your workflow
-5. **Test with simulation** before using with real robot
-6. **Save your layout** (feature coming soon)
+- Drop in your own `robot.obj` model
+- Build platform-specific widgets and share them back upstream
 
 ## Getting Help
 
-- Check the main README.md for detailed documentation
-- Review example code in widgets/
-- Check ROS2 documentation: https://docs.ros.org/
+- Check the main `README.md` for detailed documentation.
+- Review existing widgets under `src/ui/widgets/` for examples.
+- ROS2 documentation: https://docs.ros.org/
 - Qt documentation: https://doc.qt.io/
 
 ---
 
-Happy farming! 🚜🌾
+Open-source robot UI — happy hacking!

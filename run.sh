@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Precision Farming Desktop Client - Launcher Script
+# OpenRobotControl - Launcher Script
 # This script runs the application with proper output handling
 
 cd "$(dirname "$0")"
@@ -11,11 +11,11 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-echo -e "${BLUE}=== Precision Farming Desktop Client ===${NC}"
+echo -e "${BLUE}=== OpenRobotControl ===${NC}"
 echo ""
 
 # Check if executable exists
-if [ ! -f "build/PrecisionFarmingDesktopClient" ]; then
+if [ ! -f "build/OpenRobotControl" ]; then
     echo -e "${YELLOW}Executable not found. Building...${NC}"
     ./build.sh release
     if [ $? -ne 0 ]; then
@@ -33,21 +33,21 @@ fi
 
 echo ""
 echo -e "${GREEN}Starting application...${NC}"
-echo "Log file: PrecisionFarmingClient.log"
+echo "Log file: OpenRobotControl.log"
 echo ""
 
 # Run the application
-./build/PrecisionFarmingDesktopClient "$@"
+./build/OpenRobotControl "$@"
 
 EXIT_CODE=$?
 echo ""
 echo -e "${BLUE}Application exited with code: $EXIT_CODE${NC}"
 
 # Show last few log entries
-if [ -f "PrecisionFarmingClient.log" ]; then
+if [ -f "OpenRobotControl.log" ]; then
     echo ""
     echo -e "${BLUE}Last log entries:${NC}"
-    tail -n 10 PrecisionFarmingClient.log
+    tail -n 10 OpenRobotControl.log
 fi
 
 exit $EXIT_CODE

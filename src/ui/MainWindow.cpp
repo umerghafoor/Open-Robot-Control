@@ -34,7 +34,7 @@ MainWindow::~MainWindow()
 
 void MainWindow::setupUI()
 {
-    setWindowTitle("Precision Farming Robot - Desktop Client");
+    setWindowTitle("OpenRobotControl");
     setMinimumSize(1280, 720);
     resize(1600, 900);
 
@@ -114,10 +114,10 @@ void MainWindow::createMenus()
     badgeContainer->setObjectName("appBarBadgeContainer");
     menuBar()->setCornerWidget(badgeContainer, Qt::TopRightCorner);
 
-    // WeedX brand label in left corner — M3 app bar branding
+    // Brand label in left corner — M3 app bar branding
     QLabel* brandLabel = new QLabel(this);
     brandLabel->setObjectName("appBarBrandLabel");
-    brandLabel->setText("WeedX  <span style='font-weight:400;color:#7A9B79;'>Precision Farming</span>");
+    brandLabel->setText("OpenRobotControl  <span style='font-weight:400;color:#7A9B79;'>Open Source</span>");
     brandLabel->setTextFormat(Qt::RichText);
     menuBar()->setCornerWidget(brandLabel, Qt::TopLeftCorner);
 }
@@ -508,12 +508,12 @@ void MainWindow::onROS2Disconnected()
 void MainWindow::onAbout()
 {
     QMessageBox::about(this, tr("About"),
-        tr("<h2>Precision Farming Robot</h2>"
-           "<p>Desktop Client v1.0.0</p>"
-           "<p>A modular Qt-based interface for robot control and monitoring.</p>"
+        tr("<h2>OpenRobotControl</h2>"
+           "<p>Version 1.0.0 &mdash; MIT licensed open source</p>"
+           "<p>A general-purpose, modular Qt-based interface for robot control, telemetry, and simulation.</p>"
            "<p>Features:</p>"
            "<ul>"
-           "<li>ROS2 Integration</li>"
+           "<li>ROS2 Integration (optional)</li>"
            "<li>Digital Twin Simulation</li>"
            "<li>Modular Widget System</li>"
            "<li>Real-time Sensor Data Visualization</li>"

@@ -88,7 +88,7 @@ bool ROS2Interface::initialize()
         rclcpp::init(m_argc, m_argv);
 
         // Create node
-        m_node = std::make_shared<rclcpp::Node>("precision_farming_desktop_client");
+        m_node = std::make_shared<rclcpp::Node>("open_robot_control");
 
         setupPublishers();
         setupSubscribers();
