@@ -1,6 +1,7 @@
 #include <QApplication>
 #include <QDockWidget>
 #include <memory>
+#include <cstdlib>
 #include "core/Application.h"
 #include "utils/Logger.h"
 #include "ui/MaterialDockWidget.h"
@@ -39,6 +40,14 @@ public:
 
 int main(int argc, char *argv[])
 {
+    // QDockWidget drag-and-drop requires mouse grabbing which the native Wayland
+    // plugin does not support for non-popup windows. Qt's documented solution is
+    // to run under the XCB (XWayland) platform plugin where grabMouse() works.
+    // This must be set before QApplication is constructed.
+    // See: https://bugreports.qt.io/browse/QTBUG-66008
+    if (qgetenv("QT_QPA_PLATFORM").isEmpty())
+        qputenv("QT_QPA_PLATFORM", "xcb");
+
     // Initialize Qt Application
     OpenRobotControlApp app(argc, argv);
     app.setApplicationName("OpenRobotControl");
