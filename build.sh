@@ -14,6 +14,7 @@ NC='\033[0m' # No Color
 # Configuration
 BUILD_TYPE="Release"
 CLEAN_BUILD=false
+USE_OPENGL_WIDGETS=OFF   # safer default; enable with --opengl
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -30,9 +31,17 @@ while [[ $# -gt 0 ]]; do
             BUILD_TYPE="Release"
             shift
             ;;
+        --opengl|opengl)
+            USE_OPENGL_WIDGETS=ON
+            shift
+            ;;
+        --no-opengl|no-opengl)
+            USE_OPENGL_WIDGETS=OFF
+            shift
+            ;;
         *)
             echo -e "${RED}Unknown option: $1${NC}"
-            echo "Usage: $0 [clean|debug|release]"
+            echo "Usage: $0 [clean|debug|release] [--opengl|--no-opengl]"
             exit 1
             ;;
     esac
@@ -66,7 +75,8 @@ echo -e "${GREEN}Configuring with CMake...${NC}"
 cmake .. \
     -DCMAKE_BUILD_TYPE=${BUILD_TYPE} \
     -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
-    -DUSE_ROS2=${USE_ROS2}
+    -DUSE_ROS2=${USE_ROS2} \
+    -DUSE_OPENGL_WIDGETS=${USE_OPENGL_WIDGETS}
 
 # Build
 echo -e "${GREEN}Building project...${NC}"

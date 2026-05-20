@@ -10,7 +10,9 @@
 #include "DetectionSummaryWidget.h"
 #include "DetectionPanelWidget.h"
 #include "TwinVisualizationWidget.h"
+#ifdef HAVE_QT_OPENGL
 #include "RobotModelWidget.h"
+#endif
 #include "LaserCalibrationWidget.h"
 #include "IMU3DWidget.h"
 #include "Logger.h"
@@ -32,7 +34,9 @@ WidgetManager::WidgetManager(QObject *parent)
     registerWidget(WidgetType::DetectionPanel, "Detection Panel");
     registerWidget(WidgetType::Coordinates, "Coordinates");
     registerWidget(WidgetType::TwinVisualization, "Digital Twin");
+#ifdef HAVE_QT_OPENGL
     registerWidget(WidgetType::RobotModel3D, "Robot 3D Model");
+#endif
     registerWidget(WidgetType::LaserCalibration, "Laser Calibration");
     registerWidget(WidgetType::IMU3D, "IMU 3D View");
 }
@@ -92,7 +96,11 @@ BaseWidget* WidgetManager::createWidget(WidgetType type, QWidget* parent)
             widget = new TwinVisualizationWidget(parent);
             break;
         case WidgetType::RobotModel3D:
+#ifdef HAVE_QT_OPENGL
             widget = new RobotModelWidget(parent);
+#else
+            Logger::instance().warning("Robot 3D Model widget unavailable: built without OpenGL support");
+#endif
             break;
         case WidgetType::LaserCalibration:
             widget = new LaserCalibrationWidget(parent);

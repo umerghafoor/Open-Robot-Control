@@ -10,6 +10,11 @@ set(CMAKE_AUTOUIC ON)
 # Option to build with ROS2 support
 option(USE_ROS2 "Build with ROS2 support" ON)
 
+# Option to build OpenGL-based widgets (3D model, IMU 3D view, twin GL view).
+# Off by default: under Wayland/containers a faulty GL context can take down
+# the host compositor. Enable explicitly when you need the 3D widgets.
+option(USE_OPENGL_WIDGETS "Build OpenGL-based widgets (3D views)" OFF)
+
 # Find Qt6
 find_package(Qt6 REQUIRED COMPONENTS
     Core
@@ -35,10 +40,13 @@ else()
     set(HAVE_QT_MULTIMEDIA OFF)
 endif()
 
-if(Qt6OpenGLWidgets_FOUND)
-    message(STATUS "Qt6 OpenGL found - 3D model view enabled")
+if(Qt6OpenGLWidgets_FOUND AND USE_OPENGL_WIDGETS)
+    message(STATUS "Qt6 OpenGL found and USE_OPENGL_WIDGETS=ON - 3D model view enabled")
     set(HAVE_QT_OPENGL ON)
     add_definitions(-DHAVE_QT_OPENGL)
+elseif(Qt6OpenGLWidgets_FOUND)
+    message(STATUS "Qt6 OpenGL found but USE_OPENGL_WIDGETS=OFF - 3D widgets disabled (safer default)")
+    set(HAVE_QT_OPENGL OFF)
 else()
     message(STATUS "Qt6 OpenGL not found - Building without 3D model view")
     set(HAVE_QT_OPENGL OFF)
@@ -101,14 +109,19 @@ set(SOURCES
     src/ui/widgets/RobotMapView.cpp
     src/ui/widgets/StatusBadge.cpp
     src/ui/widgets/ZoomableImageView.cpp
-    src/ui/widgets/RobotModelWidget.cpp
     src/ui/widgets/LaserCalibrationWidget.cpp
     src/ui/widgets/IMU3DWidget.cpp
     src/rendering/OBJLoader.cpp
-    src/rendering/ModelGLView.cpp
     src/utils/Logger.cpp
     resources.qrc
 )
+
+if(HAVE_QT_OPENGL)
+    list(APPEND SOURCES
+        src/ui/widgets/RobotModelWidget.cpp
+        src/rendering/ModelGLView.cpp
+    )
+endif()
 
 set(HEADERS
     src/core/Application.h
@@ -133,14 +146,19 @@ set(HEADERS
     src/ui/widgets/RobotMapView.h
     src/ui/widgets/StatusBadge.h
     src/ui/widgets/ZoomableImageView.h
-    src/ui/widgets/RobotModelWidget.h
     src/ui/widgets/LaserCalibrationWidget.h
     src/ui/widgets/IMU3DWidget.h
     src/rendering/OBJMesh.h
     src/rendering/OBJLoader.h
-    src/rendering/ModelGLView.h
     src/utils/Logger.h
 )
+
+if(HAVE_QT_OPENGL)
+    list(APPEND HEADERS
+        src/ui/widgets/RobotModelWidget.h
+        src/rendering/ModelGLView.h
+    )
+endif()
 
 # Create executable
 add_executable(${PROJECT_NAME} ${SOURCES} ${HEADERS})
